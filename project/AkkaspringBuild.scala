@@ -12,7 +12,9 @@ object AkkaspringBuild extends Build {
       version := "0.1-SNAPSHOT",
       scalaVersion := "2.9.2",
       resolvers += "Typesafe Releases" at "http://repo.typesafe.com/typesafe/releases",
-      libraryDependencies += "com.typesafe.akka" % "akka-actor" % "2.0.1"
+      libraryDependencies += "com.typesafe.akka" % "akka-actor" % "2.0.1",
+      libraryDependencies += "org.springframework" % "spring-context" % "3.2.2.RELEASE",
+      libraryDependencies += "javax.inject" % "javax.inject" % "1"
     )
   )
 }
