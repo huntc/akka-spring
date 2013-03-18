@@ -4,9 +4,10 @@ import akka.actor._
 import akka.pattern.ask
 import akka.util.duration._
 import akka.util.Timeout
-
-import javax.inject.{Inject, Named}
-import org.springframework.context.annotation.{Bean, AnnotationConfigApplicationContext, Configuration, Scope}
+import javax.inject.{ Inject, Named }
+import org.springframework.context.annotation.{ Bean, AnnotationConfigApplicationContext, Configuration, Scope }
+import org.springframework.context.ApplicationContextAware
+import org.springframework.context.ApplicationContext
 
 case object Tick
 case object Get
@@ -17,9 +18,7 @@ case object Get
  */
 @Named
 class CountingService {
-  def increment = {count: Int =>
-    count + 1
-  }
+  def increment(count: Int) = count + 1
 }
 
 /**
@@ -37,9 +36,41 @@ class Counter @Inject() (countingService: CountingService) extends Actor {
   var count = 0
 
   def receive = {
-    case Tick => count = countingService.increment(count)
-    case Get  => sender ! count
+    case Tick ⇒ count = countingService.increment(count)
+    case Get  ⇒ sender ! count
   }
+}
+
+/**
+ * An Akka Extension which holds the ApplicationContext for creating actors from bean templates.
+ */
+object SpringExt extends ExtensionKey[SpringExt]
+class SpringExt(system: ExtendedActorSystem) extends Extension {
+  @volatile var ctx: ApplicationContext = _
+}
+
+/**
+ * A bean representing actor-based services, wrapping an ActorSystem.
+ */
+class ActorSystemBean extends ApplicationContextAware {
+  /**
+   * Keep the ActorSystem private to retain control over which services it
+   * provides to consumers of this bean.
+   */
+  private val system = ActorSystem("Akkaspring")
+
+  /**
+   * This method stores the ApplicationContext within the ActorSystem’s Spring
+   * extension for later use; it also enables that child actors could be created 
+   * from bean templates (not currently demonstrated in this sample).
+   */
+  override def setApplicationContext(ctx: ApplicationContext): Unit = {
+    SpringExt(system).ctx = ctx
+  }
+  
+  lazy val counter = system.actorOf(Props(SpringExt(system).ctx.getBean(classOf[Counter])))
+  
+  def shutdown(): Unit = system.shutdown()
 }
 
 /**
@@ -49,7 +80,7 @@ class Counter @Inject() (countingService: CountingService) extends Actor {
 @Configuration
 class AppConfiguration {
   @Bean
-  def actorSystem = ActorSystem("Akkaspring")
+  def actorSystem = new ActorSystemBean
 }
 
 /**
@@ -63,9 +94,8 @@ object Akkaspring extends App {
   ctx.scan("org.typesafe")
   ctx.refresh()
 
-  val system = ctx.getBean(classOf[ActorSystem])
-
-  val counter = system.actorOf(Props().withCreator(ctx.getBean(classOf[Counter])))
+  val services = ctx.getBean(classOf[ActorSystemBean])
+  val counter = services.counter
 
   counter ! Tick
   counter ! Tick
@@ -73,13 +103,9 @@ object Akkaspring extends App {
 
   implicit val timeout = Timeout(5 seconds)
 
-  (counter ? Get) onSuccess {
-    case count => println("Count is " + count)
-  }
+  // wait for the result and print it, then shut down the services
+  (counter ? Get) andThen {
+    case count ⇒ println("Count is " + count)
+  } onComplete { _ => services.shutdown() }
 
-  // You shouldn't normally require sleeping, but our example will execute asynchronously of course and we need to
-  // ensure that there is enough time elapsed so that our actor can respond.
-  Thread.sleep(500L)
-
-  system.shutdown()
 }
