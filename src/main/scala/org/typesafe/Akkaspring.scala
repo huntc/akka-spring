@@ -24,8 +24,8 @@ class CountingService {
 
 /**
  * Akka Actor available for injection and declared with a prototype scope. As stated for CountingService Spring will
- * associate a singleton scope by default. Singletons have no place in Akka when it comes
- * to Akka.
+ * associate a singleton scope by default. Singletons have no place in Akka when it comes to creating Actors (you can
+ * have millions of Actors).
  *
  * @param countingService the service that will be automatically injected. We will use this service to increment a
  *                        number.
@@ -55,8 +55,8 @@ class AppConfiguration {
 /**
  * The main class that establishes the Spring app context and then kicks off the application. Notice how the app
  * context is being asked for the ActorSystem and the Actor. Note however that it is the ActorSystem that manages the
- * lifecycle of the Actor as is normal for Akka. Spring's app context simple produces the Actor and wires it up with its
- * required beans (in our case just the CountingService).
+ * lifecycle of the Actor as is normal for Akka. Spring's app context simply produces the Actor and wires it up with its
+ * required dependencies (in our case just the CountingService).
  */
 object Akkaspring extends App {
   val ctx = new AnnotationConfigApplicationContext
