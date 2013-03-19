@@ -8,6 +8,7 @@ import javax.inject.{ Inject, Named }
 import org.springframework.context.annotation.{ Bean, AnnotationConfigApplicationContext, Configuration, Scope }
 import org.springframework.context.ApplicationContextAware
 import org.springframework.context.ApplicationContext
+import javax.annotation.PreDestroy
 
 case object Tick
 case object Get
@@ -52,7 +53,8 @@ class SpringExt(system: ExtendedActorSystem) extends Extension {
 /**
  * A bean representing actor-based services, wrapping an ActorSystem.
  */
-class ActorSystemBean extends ApplicationContextAware {
+@Named
+class ActorSystemBean @Inject() (ctx: ApplicationContext) {
   /**
    * Keep the ActorSystem private to retain control over which services it
    * provides to consumers of this bean.
@@ -60,27 +62,16 @@ class ActorSystemBean extends ApplicationContextAware {
   private val system = ActorSystem("Akkaspring")
 
   /**
-   * This method stores the ApplicationContext within the ActorSystem’s Spring
-   * extension for later use; it also enables that child actors could be created 
+   * This stores the ApplicationContext within the ActorSystem’s Spring
+   * extension for later use; it also enables that child actors could be created
    * from bean templates (not currently demonstrated in this sample).
    */
-  override def setApplicationContext(ctx: ApplicationContext): Unit = {
-    SpringExt(system).ctx = ctx
-  }
-  
-  lazy val counter = system.actorOf(Props(SpringExt(system).ctx.getBean(classOf[Counter])))
-  
-  def shutdown(): Unit = system.shutdown()
-}
+  SpringExt(system).ctx = ctx
 
-/**
- * Spring specific configuration that is responsible for creating an ActorSystem and configuring it as necessary. The
- * actorSystem bean will be a singleton.
- */
-@Configuration
-class AppConfiguration {
-  @Bean
-  def actorSystem = new ActorSystemBean
+  lazy val counter = system.actorOf(Props(SpringExt(system).ctx.getBean(classOf[Counter])))
+
+  @PreDestroy
+  def shutdown(): Unit = system.shutdown()
 }
 
 /**
