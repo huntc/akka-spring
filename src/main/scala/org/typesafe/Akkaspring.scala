@@ -36,8 +36,8 @@ class Counter @Inject() (countingService: CountingService) extends Actor {
   var count = 0
 
   def receive = {
-    case Tick ⇒ count = countingService.increment(count)
-    case Get  ⇒ sender ! count
+    case Tick => count = countingService.increment(count)
+    case Get  => sender ! count
   }
 }
 
