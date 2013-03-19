@@ -17,9 +17,7 @@ case object Get
  */
 @Named
 class CountingService {
-  def increment = {count: Int =>
-    count + 1
-  }
+  def increment(count: Int) = count + 1
 }
 
 /**
@@ -73,13 +71,8 @@ object Akkaspring extends App {
 
   implicit val timeout = Timeout(5 seconds)
 
-  (counter ? Get) onSuccess {
-    case count => println("Count is " + count)
-  }
-
-  // You shouldn't normally require sleeping, but our example will execute asynchronously of course and we need to
-  // ensure that there is enough time elapsed so that our actor can respond.
-  Thread.sleep(500L)
-
-  system.shutdown()
+  // wait for the result and print it, then shut down the services
+  (counter ? Get) andThen {
+    case count ⇒ println("Count is " + count)
+  } onComplete { _ => system.shutdown() }
 }
