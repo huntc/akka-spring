@@ -4,11 +4,10 @@ import akka.actor._
 import akka.pattern.ask
 import akka.util.duration._
 import akka.util.Timeout
-import javax.inject.{ Inject, Named }
-import org.springframework.context.annotation.{ Bean, AnnotationConfigApplicationContext, Configuration, Scope }
-import org.springframework.context.ApplicationContextAware
-import org.springframework.context.ApplicationContext
-import javax.annotation.PreDestroy
+import javax.inject.{Inject, Named}
+import org.springframework.context.annotation.{Bean, AnnotationConfigApplicationContext, Configuration, Scope}
+import org.springframework.context.annotation.aspectj.EnableSpringConfigured
+import org.springframework.context.annotation.EnableLoadTimeWeaving
 
 case object Tick
 case object Get
@@ -43,35 +42,19 @@ class Counter @Inject() (countingService: CountingService) extends Actor {
 }
 
 /**
- * An Akka Extension which holds the ApplicationContext for creating actors from bean templates.
+ * Spring specific configuration that is responsible for creating an ActorSystem and configuring it as necessary. The
+ * actorSystem bean will be a singleton.
+ *
+ * `@EnableSpringConfigured` and `@EnableLoadTimeWeaving` annotations activates detection of
+ * `@Configurable` beans.
+ * http://static.springsource.org/spring/docs/3.2.x/spring-framework-reference/html/aop.html#aop-atconfigurable
  */
-object SpringExt extends ExtensionKey[SpringExt]
-class SpringExt(system: ExtendedActorSystem) extends Extension {
-  @volatile var ctx: ApplicationContext = _
-}
-
-/**
- * A bean representing actor-based services, wrapping an ActorSystem.
- */
-@Named
-class ActorSystemBean @Inject() (ctx: ApplicationContext) {
-  /**
-   * Keep the ActorSystem private to retain control over which services it
-   * provides to consumers of this bean.
-   */
-  private val system = ActorSystem("Akkaspring")
-
-  /**
-   * This stores the ApplicationContext within the ActorSystem’s Spring
-   * extension for later use; it also enables that child actors could be created
-   * from bean templates (not currently demonstrated in this sample).
-   */
-  SpringExt(system).ctx = ctx
-
-  lazy val counter = system.actorOf(Props(SpringExt(system).ctx.getBean(classOf[Counter])))
-
-  @PreDestroy
-  def shutdown(): Unit = system.shutdown()
+@Configuration
+@EnableSpringConfigured
+@EnableLoadTimeWeaving
+class AppConfiguration {
+  @Bean
+  def actorSystem = ActorSystem("Akkaspring")
 }
 
 /**
@@ -98,5 +81,4 @@ object Akkaspring extends App {
   (counter ? Get) andThen {
     case count ⇒ println("Count is " + count)
   } onComplete { _ => services.shutdown() }
-
 }
