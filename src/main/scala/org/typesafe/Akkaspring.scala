@@ -8,6 +8,7 @@ import javax.inject.{Inject, Named}
 import org.springframework.context.annotation.{Bean, AnnotationConfigApplicationContext, Configuration, Scope}
 import org.springframework.context.annotation.aspectj.EnableSpringConfigured
 import org.springframework.context.annotation.EnableLoadTimeWeaving
+import org.springframework.beans.factory.annotation.Configurable
 
 case object Tick
 case object Get
@@ -22,15 +23,11 @@ class CountingService {
 }
 
 /**
- * Akka Actor available for injection and declared with a prototype scope. As stated for CountingService Spring will
- * associate a singleton scope by default. Singletons have no place in Akka when it comes to creating Actors (you can
- * have millions of Actors).
- *
- * @param countingService the service that will be automatically injected. We will use this service to increment a
- *                        number.
+ * Akka Actor constructed with `Props[Counter2]` or `Props(new Counter2)` with injected resources.
+ * `@Configurable` enables injection of spring beans into the actor.
+ * http://static.springsource.org/spring/docs/3.2.x/spring-framework-reference/html/aop.html#aop-atconfigurable
  */
-@Named
-@Scope("prototype")
+@Configurable(preConstruction = true)
 class Counter @Inject() (countingService: CountingService) extends Actor {
 
   var count = 0
@@ -68,8 +65,8 @@ object Akkaspring extends App {
   ctx.scan("org.typesafe")
   ctx.refresh()
 
-  val services = ctx.getBean(classOf[ActorSystemBean])
-  val counter = services.counter
+  val system = ctx.getBean(classOf[ActorSystem])
+  val counter = system.actorOf(Props[Counter])
 
   counter ! Tick
   counter ! Tick
@@ -80,5 +77,5 @@ object Akkaspring extends App {
   // wait for the result and print it, then shut down the services
   (counter ? Get) andThen {
     case count ⇒ println("Count is " + count)
-  } onComplete { _ => services.shutdown() }
+  } onComplete { _ => system.shutdown() }
 }
