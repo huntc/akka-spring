@@ -4,9 +4,10 @@ import akka.actor._
 import akka.pattern.ask
 import akka.util.duration._
 import akka.util.Timeout
-
 import javax.inject.{Inject, Named}
 import org.springframework.context.annotation.{Bean, AnnotationConfigApplicationContext, Configuration, Scope}
+import org.springframework.context.annotation.aspectj.EnableSpringConfigured
+import org.springframework.context.annotation.EnableLoadTimeWeaving
 
 case object Tick
 case object Get
@@ -43,8 +44,14 @@ class Counter @Inject() (countingService: CountingService) extends Actor {
 /**
  * Spring specific configuration that is responsible for creating an ActorSystem and configuring it as necessary. The
  * actorSystem bean will be a singleton.
+ *
+ * `@EnableSpringConfigured` and `@EnableLoadTimeWeaving` annotations activates detection of
+ * `@Configurable` beans.
+ * http://static.springsource.org/spring/docs/3.2.x/spring-framework-reference/html/aop.html#aop-atconfigurable
  */
 @Configuration
+@EnableSpringConfigured
+@EnableLoadTimeWeaving
 class AppConfiguration {
   @Bean
   def actorSystem = ActorSystem("Akkaspring")
@@ -73,6 +80,6 @@ object Akkaspring extends App {
 
   // wait for the result and print it, then shut down the services
   (counter ? Get) andThen {
-    case count ⇒ println("Count is " + count)
+    case count => println("Count is " + count)
   } onComplete { _ => system.shutdown() }
 }
