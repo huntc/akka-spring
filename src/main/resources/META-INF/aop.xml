@@ -1,0 +1,6 @@
+<aspectj>
+  <!-- See: http://www.eclipse.org/aspectj/doc/next/devguide/ltw-configuration.html -->
+  <weaver options="-Xlint:ignore">
+    <include within="org.typesafe.*"/>
+  </weaver>
+</aspectj>
