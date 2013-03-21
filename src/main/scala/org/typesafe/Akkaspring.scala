@@ -26,9 +26,16 @@ class CountingService {
  * Akka Actor constructed with `Props[Counter2]` or `Props(new Counter2)` with injected resources.
  * `@Configurable` enables injection of spring beans into the actor.
  * http://static.springsource.org/spring/docs/3.2.x/spring-framework-reference/html/aop.html#aop-atconfigurable
+ *
+ * Constructor parameter injection is not used because the instance is created in code without
+ * retrieving beans from Spring context with `ctx.getBean`.
  */
 @Configurable(preConstruction = true)
-class Counter @Inject() (countingService: CountingService) extends Actor {
+class Counter extends Actor {
+
+  // the service that will be automatically injected
+  @Inject
+  var countingService: CountingService = _
 
   var count = 0
 
